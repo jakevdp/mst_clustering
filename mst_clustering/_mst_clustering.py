@@ -13,7 +13,6 @@ from sklearn.base import BaseEstimator, ClusterMixin
 from sklearn.neighbors import kneighbors_graph
 
 
-
 class MSTClustering(BaseEstimator, ClusterMixin):
     """Minimum Spanning Tree Clustering
 
@@ -73,6 +72,9 @@ class MSTClustering(BaseEstimator, ClusterMixin):
         """
         X = check_array(X)
 
+        if self.cutoff is None and self.cutoff_scale is None:
+            raise ValueError("Must specify either cutoff or cutoff_frac")
+
         # validate n_neighbors
         n_neighbors = min(self.n_neighbors, X.shape[0] - 1)
 
@@ -82,23 +84,32 @@ class MSTClustering(BaseEstimator, ClusterMixin):
                              metric=self.metric,
                              metric_params=self.metric_params)
 
+        # HACK to keep explicit zeros (minimum spanning tree removes them)
+        Gmin = G.data[G.data > 0].min()
+        G.data[G.data == 0] = Gmin * 1E-8
+
         # Compute the minimum spanning tree of this graph
         self.full_tree_ = minimum_spanning_tree(G, overwrite=True)
+        self.full_tree_[self.full_tree_ == Gmin * 1E-8] = 0
 
-        # Determine cutoff scale from ``cutoff`` and ``cutoff_scale``
+        # TODO: make duplicate values behave correctly
+
+        # Determine cutoff scale from ``cutoff``
         if self.cutoff is None:
-            cutoff_frac = 0
-        elif self.cutoff >= 1:
-            cutoff_frac = max(1.0, self.cutoff / X.shape[0])
+            cutoff_value = np.max(self.full_tree_.data)
         elif 0 <= self.cutoff < 1:
-            cutoff_frac = self.cutoff
+            cutoff_value = np.percentile(self.full_tree_.data,
+                                         100 * (1 - self.cutoff))
+        elif self.cutoff >= len(self.full_tree_.data):
+            cutoff_value = min(self.full_tree_.data) - 1
+        elif self.cutoff >= 1:
+            N = len(self.full_tree_.data) - 1 - int(self.cutoff)
+            cutoff_value = np.partition(self.full_tree_.data, N)[N]
         else:
             raise ValueError('self.cutoff must be positive, not {0}'
                              ''.format(self.cutoff))
 
-        cutoff_value = np.percentile(self.full_tree_.data,
-                                     100 * (1 - cutoff_frac))
-
+        # modify cutoff value with ``cutoff_scale`` if necessary
         if self.cutoff_scale is not None:
             cutoff_value = min(cutoff_value, self.cutoff_scale)
 
@@ -126,10 +137,9 @@ class MSTClustering(BaseEstimator, ClusterMixin):
         counts = np.bincount(labels)
         to_remove = np.where(counts < self.min_cluster_size)[0]
 
-        for i in to_remove:
-            labels[labels == i] = -1
-
         if len(to_remove) > 0:
+            for i in to_remove:
+                labels[labels == i] = -1
             _, labels = np.unique(labels, return_inverse=True)
             labels -= 1  # keep -1 labels the same
 
@@ -141,8 +151,8 @@ class MSTClustering(BaseEstimator, ClusterMixin):
 
         # we could just do this:
         #   T_trunc = I * T_trunc * I
-        # but we want to be able to eliminate the zeros, so we use the same
-        # trick as above
+        # but we want to be able to eliminate the zeros, so we use
+        # the same indexing trick as above
         original_data = T_trunc.data
         T_trunc.data = np.arange(1, len(T_trunc.data) + 1)
         T_trunc = I * T_trunc * I
