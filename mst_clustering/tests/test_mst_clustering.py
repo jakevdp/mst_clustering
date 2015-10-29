@@ -1,6 +1,8 @@
 import numpy as np
 from numpy.testing import assert_equal, assert_allclose
 
+from nose import SkipTest
+
 from sklearn.datasets import make_blobs
 from sklearn.neighbors import kneighbors_graph
 from sklearn.metrics import pairwise_distances
@@ -26,10 +28,26 @@ def test_n_clusters():
     X = rng.rand(N, 3)
 
     def _check_n(n):
-        y_pred = MSTClustering(cutoff=n).fit_predict(X)
+        y_pred = MSTClustering(cutoff=n, approximate=False).fit_predict(X)
         assert_equal(len(np.unique(y_pred)), n + 1)
 
     for n in range(30):
+        yield _check_n, n
+
+
+def test_n_clusters_approximate():
+    N = 30
+    rng = np.random.RandomState(42)
+    X = rng.rand(N, 3)
+
+    def _check_n(n):
+        y_pred = MSTClustering(cutoff=n,
+                               n_neighbors=2,
+                               approximate=True).fit_predict(X)
+        assert_equal(len(np.unique(y_pred)), n + 1)
+
+    # due to approximation, there are 3 clusters for n in (1, 2)
+    for n in range(3, 30):
         yield _check_n, n
 
 
@@ -89,3 +107,12 @@ def test_precomputed_metric_with_duplicates():
 
     assert_allclose(y1, y2)
     assert_allclose(y2, y3)
+    
+
+def test_estimator_checks():
+    try:
+        from sklearn.utils.estimator_checks import check_estimator
+    except ImportError:
+        raise SkipTest("need scikit-learn 0.17+ for check_estimator()")
+
+    check_estimator(MSTClustering)

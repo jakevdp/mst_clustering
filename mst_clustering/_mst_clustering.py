@@ -66,7 +66,7 @@ class MSTClustering(BaseEstimator, ClusterMixin):
     O[Nk log(Nk)]. For k = N, the approximation is exact; in practice for
     well-behaved data sets, the result is exact for k << N.
     """
-    def __init__(self, cutoff=None, cutoff_scale=None, min_cluster_size=1,
+    def __init__(self, cutoff=0, cutoff_scale=None, min_cluster_size=1,
                  approximate=True, n_neighbors=20,
                  metric='euclidean', metric_params=None):
         self.cutoff = cutoff
@@ -125,7 +125,7 @@ class MSTClustering(BaseEstimator, ClusterMixin):
         self.full_tree_[self.full_tree_ == zero_fillin] = 0
 
         # Partition the data by the cutoff
-        N = len(self.full_tree_.data)
+        N = G.shape[0] - 1
         if self.cutoff is None:
             i_cut = N
         elif 0 <= self.cutoff < 1:
@@ -137,6 +137,7 @@ class MSTClustering(BaseEstimator, ClusterMixin):
                              ''.format(self.cutoff))
 
         # create the mask; we zero-out values where the mask is True
+        N = len(self.full_tree_.data)
         if i_cut < 0:
             mask = np.ones(N, dtype=bool)
         elif i_cut >= N:
