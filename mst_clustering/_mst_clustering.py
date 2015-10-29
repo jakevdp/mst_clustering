@@ -12,6 +12,7 @@ from sklearn.utils import check_array
 
 from sklearn.base import BaseEstimator, ClusterMixin
 from sklearn.neighbors import kneighbors_graph
+from sklearn.metrics import pairwise_distances
 
 
 class MSTClustering(BaseEstimator, ClusterMixin):
@@ -26,13 +27,18 @@ class MSTClustering(BaseEstimator, ClusterMixin):
     cutoff_scale : float, optional
         minimum size of edges. All edges larger than cutoff_scale will be
         removed (see also ``cutoff`` parameter).
-    min_cluster_size : int (default 1)
+    min_cluster_size : int (default: 1)
         minimum number of points per cluster. Points belonging to smaller
         clusters will be assigned to the background.
         all clusters will be kept.
-    n_neighbors : int, optional (default 20)
+    approximate : bool, optional (default: True)
+        If True, then compute the approximate minimum spanning tree using
+        n_neighbors nearest neighbors. If False, then compute the full
+        O[N^2] edges (see Notes, below).
+    n_neighbors : int, optional (default: 20)
         maximum number of neighbors of each point used for approximate
-        Euclidean minimum spanning tree (MST) algorithm.  See Notes below.
+        Euclidean minimum spanning tree (MST) algorithm.  Referenced only
+        if ``approximate`` is False. See Notes below.
     metric : string (default "euclidean")
         Distance metric to use in computing distances. If "precomputed", then
         input is a [n_samples, n_samples] matrix of pairwise distances (either
@@ -60,12 +66,13 @@ class MSTClustering(BaseEstimator, ClusterMixin):
     O[Nk log(Nk)]. For k = N, the approximation is exact; in practice for
     well-behaved data sets, the result is exact for k << N.
     """
-    def __init__(self, cutoff=None, cutoff_scale=None,
-                 min_cluster_size=1, n_neighbors=20,
+    def __init__(self, cutoff=None, cutoff_scale=None, min_cluster_size=1,
+                 approximate=True, n_neighbors=20,
                  metric='euclidean', metric_params=None):
         self.cutoff = cutoff
         self.cutoff_scale = cutoff_scale
         self.min_cluster_size = min_cluster_size
+        self.approximate = approximate
         self.n_neighbors = n_neighbors
         self.metric = metric
         self.metric_params = metric_params
@@ -85,12 +92,22 @@ class MSTClustering(BaseEstimator, ClusterMixin):
         if self.metric == 'precomputed':
             # Input is already a graph. Copy if sparse
             # so we can overwrite for efficiency below.
+            self.X_fit_ = None
             G = validate_graph(X, directed=True,
+                               csr_output=True, dense_output=False,
+                               copy_if_sparse=True, null_value_in=np.inf)
+        elif not self.approximate:
+            X = check_array(X)
+            self.X_fit_ = X
+            kwds = self.metric_params or {}
+            G = pairwise_distances(X, metric=self.metric, **kwds)
+            G = validate_graph(G, directed=True,
                                csr_output=True, dense_output=False,
                                copy_if_sparse=True, null_value_in=np.inf)
         else:
             # generate a sparse graph using n_neighbors of each point
             X = check_array(X)
+            self.X_fit_ = X
             n_neighbors = min(self.n_neighbors, X.shape[0] - 1)
             G = kneighbors_graph(X, n_neighbors=n_neighbors,
                                  mode='distance',
@@ -182,3 +199,38 @@ class MSTClustering(BaseEstimator, ClusterMixin):
         self.labels_ = labels
         self.cluster_graph_ = cluster_graph
         return self
+
+    def get_graph_segments(self, full_graph=False):
+        """Convenience routine to get graph segments
+
+        This is useful for visualization of the graph underlying the algorithm.
+
+        Parameters
+        ----------
+        full_graph : bool (default: False)
+            If True, return the full graph of connections. Otherwise return
+            the truncated graph representing clusters.
+
+        Returns
+        -------
+        segments : tuple of ndarrays
+            the coordinates representing the graph. The tuple is of length
+            n_features, and each array is of size (n_features, n_edges).
+            For n_features=2, the graph can be visualized in matplotlib with,
+            e.g. ``plt.plot(segments[0], segments[1], '-k')``
+        """
+        if not hasattr(self, 'X_fit_'):
+            raise ValueError("Must call fit() before get_graph_segments()")
+        if self.metric == 'precomputed':
+            raise ValueError("Cannot use ``get_graph_segments`` "
+                             "with precomputed metric.")
+
+        n_samples, n_features = self.X_fit_.shape
+        
+        if full_graph:
+            G = sparse.coo_matrix(self.full_tree_)
+        else:
+            G = sparse.coo_matrix(self.cluster_graph_)
+
+        return tuple(np.vstack(arrs) for arrs in zip(self.X_fit_[G.row].T,
+                                                     self.X_fit_[G.col].T))
