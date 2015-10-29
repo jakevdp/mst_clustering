@@ -2,6 +2,8 @@ import numpy as np
 from numpy.testing import assert_equal, assert_allclose
 
 from sklearn.datasets import make_blobs
+from sklearn.neighbors import kneighbors_graph
+from sklearn.metrics import pairwise_distances
 
 from .. import MSTClustering
 
@@ -41,7 +43,49 @@ def test_explicit_zeros():
         y_pred = MSTClustering(cutoff=n).fit_predict(X)
         assert_equal(len(np.unique(y_pred)), n + 1)
 
-    for n in range(25):
+    for n in range(30):
         yield _check_n, n
-    
-    
+
+
+def test_precomputed_metric():
+    N = 30
+    n_neighbors = 10
+    rng = np.random.RandomState(42)
+    X = rng.rand(N, 3)
+
+    G_sparse = kneighbors_graph(X, n_neighbors=n_neighbors, mode='distance')
+    G_dense = G_sparse.toarray()
+    G_dense[G_dense == 0] = np.nan
+
+    kwds = dict(cutoff=0.1)
+    y1 = MSTClustering(n_neighbors=n_neighbors, **kwds).fit_predict(X)
+    y2 = MSTClustering(metric='precomputed', **kwds).fit_predict(G_sparse)
+    y3 = MSTClustering(metric='precomputed', **kwds).fit_predict(G_dense)
+
+    assert_allclose(y1, y2)
+    assert_allclose(y2, y3)
+
+
+def test_precomputed_metric_with_duplicates():
+    N = 30
+    n_neighbors = N - 1
+    rng = np.random.RandomState(42)
+
+    # make data with duplicate points
+    X = rng.rand(N, 3)
+    X[-5:] = X[:5]
+
+    # compute sparse distances
+    G_sparse = kneighbors_graph(X, n_neighbors=n_neighbors,
+                                mode='distance')
+
+    # compute dense distances
+    G_dense = pairwise_distances(X, X)
+
+    kwds = dict(cutoff=0.1)
+    y1 = MSTClustering(n_neighbors=n_neighbors, **kwds).fit_predict(X)
+    y2 = MSTClustering(metric='precomputed', **kwds).fit_predict(G_sparse)
+    y3 = MSTClustering(metric='precomputed', **kwds).fit_predict(G_dense)
+
+    assert_allclose(y1, y2)
+    assert_allclose(y2, y3)

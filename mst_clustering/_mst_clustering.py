@@ -7,6 +7,7 @@ import numpy as np
 
 from scipy import sparse
 from scipy.sparse.csgraph import minimum_spanning_tree, connected_components
+from scipy.sparse.csgraph._validation import validate_graph
 from sklearn.utils import check_array
 
 from sklearn.base import BaseEstimator, ClusterMixin
@@ -30,8 +31,15 @@ class MSTClustering(BaseEstimator, ClusterMixin):
         clusters will be assigned to the background.
         all clusters will be kept.
     n_neighbors : int, optional (default 20)
-        number of neighbors of each point used for approximate Euclidean
-        minimum spanning tree (MST) algorithm.  See Notes below.
+        maximum number of neighbors of each point used for approximate
+        Euclidean minimum spanning tree (MST) algorithm.  See Notes below.
+    metric : string (default "euclidean")
+        Distance metric to use in computing distances. If "precomputed", then
+        input is a [n_samples, n_samples] matrix of pairwise distances (either
+        sparse, or dense with NaN/inf indicating missing edges)
+    metric_params : dict or None (optional)
+        dictionary of parameters passed to the metric. See documentation of
+        sklearn.neighbors.NearestNeighbors for details.
 
     Attributes
     ----------
@@ -70,68 +78,80 @@ class MSTClustering(BaseEstimator, ClusterMixin):
         X : array_like
             the data to be clustered: shape = [n_samples, n_features]
         """
-        X = check_array(X)
-
         if self.cutoff is None and self.cutoff_scale is None:
             raise ValueError("Must specify either cutoff or cutoff_frac")
 
-        # validate n_neighbors
-        n_neighbors = min(self.n_neighbors, X.shape[0] - 1)
-
-        # generate a sparse graph using the k nearest neighbors of each point
-        G = kneighbors_graph(X, n_neighbors=n_neighbors,
-                             mode='distance',
-                             metric=self.metric,
-                             metric_params=self.metric_params)
+        # Compute the distance-based graph G from the points in X
+        if self.metric == 'precomputed':
+            # Input is already a graph. Copy if sparse
+            # so we can overwrite for efficiency below.
+            G = validate_graph(X, directed=True,
+                               csr_output=True, dense_output=False,
+                               copy_if_sparse=True, null_value_in=np.inf)
+        else:
+            # generate a sparse graph using n_neighbors of each point
+            X = check_array(X)
+            n_neighbors = min(self.n_neighbors, X.shape[0] - 1)
+            G = kneighbors_graph(X, n_neighbors=n_neighbors,
+                                 mode='distance',
+                                 metric=self.metric,
+                                 metric_params=self.metric_params)
 
         # HACK to keep explicit zeros (minimum spanning tree removes them)
-        Gmin = G.data[G.data > 0].min()
-        G.data[G.data == 0] = Gmin * 1E-8
+        zero_fillin = G.data[G.data > 0].min() * 1E-8
+        G.data[G.data == 0] = zero_fillin
 
         # Compute the minimum spanning tree of this graph
         self.full_tree_ = minimum_spanning_tree(G, overwrite=True)
-        self.full_tree_[self.full_tree_ == Gmin * 1E-8] = 0
 
-        # TODO: make duplicate values behave correctly
+        # undo the hack to bring back explicit zeros
+        self.full_tree_[self.full_tree_ == zero_fillin] = 0
 
-        # Determine cutoff scale from ``cutoff``
+        # Partition the data by the cutoff
+        N = len(self.full_tree_.data)
         if self.cutoff is None:
-            cutoff_value = np.max(self.full_tree_.data)
+            i_cut = N
         elif 0 <= self.cutoff < 1:
-            cutoff_value = np.percentile(self.full_tree_.data,
-                                         100 * (1 - self.cutoff))
-        elif self.cutoff >= len(self.full_tree_.data):
-            cutoff_value = min(self.full_tree_.data) - 1
+            i_cut = int((1 - self.cutoff) * N)
         elif self.cutoff >= 1:
-            N = len(self.full_tree_.data) - 1 - int(self.cutoff)
-            cutoff_value = np.partition(self.full_tree_.data, N)[N]
+            i_cut = int(N - self.cutoff)
         else:
             raise ValueError('self.cutoff must be positive, not {0}'
                              ''.format(self.cutoff))
 
-        # modify cutoff value with ``cutoff_scale`` if necessary
+        # create the mask; we zero-out values where the mask is True
+        if i_cut < 0:
+            mask = np.ones(N, dtype=bool)
+        elif i_cut >= N:
+            mask = np.zeros(N, dtype=bool)
+        else:
+            mask = np.ones(N, dtype=bool)
+            part = np.argpartition(self.full_tree_.data, i_cut)
+            mask[part[:i_cut]] = False
+
+        # additionally cut values above the ``cutoff_scale``
         if self.cutoff_scale is not None:
-            cutoff_value = min(cutoff_value, self.cutoff_scale)
+            mask |= (self.full_tree_.data > self.cutoff_scale)
 
         # Trim the tree
-        T_trunc = self.full_tree_.copy()
-        mask = T_trunc.data > cutoff_value
+        cluster_graph = self.full_tree_.copy()
 
-        # Eliminate zeros from T_trunc for efficiency.
+        # Eliminate zeros from cluster_graph for efficiency.
         # We want to do this:
-        #    T_trunc.data[mask] = 0
-        #    T_trunc.eliminate_zeros()
+        #    cluster_graph.data[mask] = 0
+        #    cluster_graph.eliminate_zeros()
         # but there could be explicit zeros in our data!
         # So we call eliminate_zeros() with a stand-in data array,
         # then replace the data when we're finished.
-        original_data = T_trunc.data
-        T_trunc.data = np.arange(1, len(T_trunc.data) + 1)
-        T_trunc.data[mask] = 0
-        T_trunc.eliminate_zeros()
-        T_trunc.data = original_data[T_trunc.data.astype(int) - 1]
+        original_data = cluster_graph.data
+        cluster_graph.data = np.arange(1, len(cluster_graph.data) + 1)
+        cluster_graph.data[mask] = 0
+        cluster_graph.eliminate_zeros()
+        cluster_graph.data = original_data[cluster_graph.data.astype(int) - 1]
 
         # find connected components
-        n_components, labels = connected_components(T_trunc, directed=False)
+        n_components, labels = connected_components(cluster_graph,
+                                                    directed=False)
 
         # remove clusters with fewer than min_cluster_size
         counts = np.bincount(labels)
@@ -143,22 +163,22 @@ class MSTClustering(BaseEstimator, ClusterMixin):
             _, labels = np.unique(labels, return_inverse=True)
             labels -= 1  # keep -1 labels the same
 
-        # update T_trunc by eliminating non-clusters
+        # update cluster_graph by eliminating non-clusters
         # operationally, this means zeroing-out rows & columns where
         # the label is negative.
         I = sparse.eye(len(labels))
         I.data[0, labels < 0] = 0
 
         # we could just do this:
-        #   T_trunc = I * T_trunc * I
+        #   cluster_graph = I * cluster_graph * I
         # but we want to be able to eliminate the zeros, so we use
         # the same indexing trick as above
-        original_data = T_trunc.data
-        T_trunc.data = np.arange(1, len(T_trunc.data) + 1)
-        T_trunc = I * T_trunc * I
-        T_trunc.eliminate_zeros()
-        T_trunc.data = original_data[T_trunc.data.astype(int) - 1]
+        original_data = cluster_graph.data
+        cluster_graph.data = np.arange(1, len(cluster_graph.data) + 1)
+        cluster_graph = I * cluster_graph * I
+        cluster_graph.eliminate_zeros()
+        cluster_graph.data = original_data[cluster_graph.data.astype(int) - 1]
 
         self.labels_ = labels
-        self.cluster_graph_ = T_trunc
+        self.cluster_graph_ = cluster_graph
         return self
