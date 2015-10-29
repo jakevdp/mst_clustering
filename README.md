@@ -1,4 +1,4 @@
-# ``mst_clustering``: Minimum Spanning Tree Clustering
+# Minimum Spanning Tree Clustering
 
 This package implements a simple scikit-learn style estimator for clustering
 with a minimum spanning tree.
