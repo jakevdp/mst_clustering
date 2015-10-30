@@ -5,7 +5,7 @@ with a minimum spanning tree.
 
 ## Example
 
-For an explanation of the algorithm and an example of it in action, see the [MST Clustering Notebook](http://nbviewer.ipython.org/github/jakevdp/mst_clustering/blob/master/MSTClustering.ipynb).
+For an explanation of the algorithm and an example of it in action, see the [MST Clustering Notebook](http://nbviewer.jupyter.org/github/jakevdp/mst_clustering/blob/master/MSTClustering.ipynb).
 
 ## Installation & Requirements
 
