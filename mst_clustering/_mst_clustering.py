@@ -30,7 +30,6 @@ class MSTClustering(BaseEstimator, ClusterMixin):
     min_cluster_size : int (default: 1)
         minimum number of points per cluster. Points belonging to smaller
         clusters will be assigned to the background.
-        all clusters will be kept.
     approximate : bool, optional (default: True)
         If True, then compute the approximate minimum spanning tree using
         n_neighbors nearest neighbors. If False, then compute the full
@@ -66,7 +65,7 @@ class MSTClustering(BaseEstimator, ClusterMixin):
     O[Nk log(Nk)]. For k = N, the approximation is exact; in practice for
     well-behaved data sets, the result is exact for k << N.
     """
-    def __init__(self, cutoff=0, cutoff_scale=None, min_cluster_size=1,
+    def __init__(self, cutoff=None, cutoff_scale=None, min_cluster_size=1,
                  approximate=True, n_neighbors=20,
                  metric='euclidean', metric_params=None):
         self.cutoff = cutoff
@@ -227,7 +226,7 @@ class MSTClustering(BaseEstimator, ClusterMixin):
                              "with precomputed metric.")
 
         n_samples, n_features = self.X_fit_.shape
-        
+
         if full_graph:
             G = sparse.coo_matrix(self.full_tree_)
         else:

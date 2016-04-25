@@ -1,5 +1,6 @@
 import numpy as np
-from numpy.testing import assert_equal, assert_allclose
+from numpy.testing import (assert_, assert_equal, assert_allclose,
+                           assert_raises_regex)
 
 from nose import SkipTest
 
@@ -107,7 +108,90 @@ def test_precomputed_metric_with_duplicates():
 
     assert_allclose(y1, y2)
     assert_allclose(y2, y3)
-    
+
+
+def test_min_cluster_size():
+    N = 30
+    rng = np.random.RandomState(42)
+    X = rng.rand(N, 3)
+
+    def _check(n, min_cluster_size):
+        y_pred = MSTClustering(cutoff=n,
+                               n_neighbors=2,
+                               min_cluster_size=min_cluster_size,
+                               approximate=True).fit_predict(X)
+        labels, counts = np.unique(y_pred, return_counts=True)
+        counts = counts[labels >= 0]
+        if len(counts):
+            assert_(counts.min() >= min_cluster_size)
+
+    # due to approximation, there are 3 clusters for n in (1, 2)
+    for n in range(3, 30, 5):
+        for min_cluster_size in [1, 3, 5]:
+            yield _check, n, min_cluster_size
+
+
+def test_precomputed():
+    X, y = make_blobs(100, random_state=42)
+    D = pairwise_distances(X)
+
+    mst1 = MSTClustering(cutoff=0.1)
+    mst2 = MSTClustering(cutoff=0.1, metric='precomputed')
+
+    assert_equal(mst1.fit_predict(X),
+                 mst2.fit_predict(D))
+
+
+def test_bad_arguments():
+    X, y = make_blobs(100, random_state=42)
+
+    mst = MSTClustering()
+    assert_raises_regex(ValueError,
+                        "Must specify either cutoff or cutoff_frac",
+                        mst.fit, X, y)
+
+    mst = MSTClustering(cutoff=-1)
+    assert_raises_regex(ValueError, "cutoff must be positive", mst.fit, X)
+
+    mst = MSTClustering()
+    msg = "Must call fit\(\) before get_graph_segments()"
+    assert_raises_regex(ValueError, msg, mst.get_graph_segments)
+
+    mst = MSTClustering(cutoff=0, metric='precomputed')
+    mst.fit(pairwise_distances(X))
+    msg = "Cannot use ``get_graph_segments`` with precomputed metric."
+    assert_raises_regex(ValueError, msg, mst.get_graph_segments)
+
+def test_graph_segments_shape():
+    def check_shape(ndim, cutoff, N=10):
+        X = np.random.rand(N, ndim)
+        mst = MSTClustering(cutoff=cutoff).fit(X)
+
+        segments = mst.get_graph_segments()
+        print(ndim, cutoff, segments[0].shape)
+        assert len(segments) == ndim
+        assert all(seg.shape == (2, N - 1 - cutoff) for seg in segments)
+
+        segments = mst.get_graph_segments(full_graph=True)
+        print(segments[0].shape)
+        assert len(segments) == ndim
+        assert all(seg.shape == (2, N - 1) for seg in segments)
+
+    for N in [10, 15]:
+        for ndim in [1, 2, 3]:
+            for cutoff in [0, 1, 2]:
+                yield check_shape, ndim, cutoff, N
+
+
+def check_graph_segments_vals():
+    X = np.arange(5)[:, None] ** 2
+    mst = MSTClustering(cutoff=0).fit(X)
+    segments = mst.get_graph_segments()
+    assert len(segments) == 1
+    assert_allclose(segments[0],
+                    [[0, 4, 4, 9],
+                     [1, 1, 9, 16]])
+
 
 # this fails for silly reasons currently; we'll leave it out.
 def __test_estimator_checks():
