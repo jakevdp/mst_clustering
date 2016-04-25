@@ -24,7 +24,7 @@ def version(path):
     raise RuntimeError("Unable to find version string.")
 
 
-DESCRIPTION = "General tools for Astronomical Time Series in Python"
+DESCRIPTION = "Clustering with Minimum Spanning Trees"
 LONG_DESCRIPTION = """
 mst_clustering: Clustering with Minimum Spanning Trees
 ======================================================

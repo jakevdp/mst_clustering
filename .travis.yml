@@ -1,0 +1,40 @@
+language: python
+
+# sudo false implies containerized builds
+sudo: false
+
+python:
+  - 2.7
+  - 3.4
+  - 3.5
+
+env:
+  global:
+    # Directory where tests are run from
+    - TEST_DIR=/tmp/mst_clustering
+    - CONDA_DEPS="scikit-learn nose"
+    - PIP_DEPS="coveralls"
+  matrix:
+    - EXTRA_DEPS=""
+
+before_install:
+- export MINICONDA=$HOME/miniconda
+- export PATH="$MINICONDA/bin:$PATH"
+- hash -r
+- wget http://repo.continuum.io/miniconda/Miniconda-latest-Linux-x86_64.sh -O miniconda.sh
+- bash miniconda.sh -b -f -p $MINICONDA
+- conda config --set always_yes yes
+- conda update conda
+- conda info -a
+- conda install python=$TRAVIS_PYTHON_VERSION $CONDA_DEPS $EXTRA_DEPS
+- travis_retry pip install $PIP_DEPS
+
+install:
+- python setup.py install
+
+script:
+- mkdir -p $TEST_DIR
+- cd $TEST_DIR && nosetests -v --with-coverage --cover-package=mst_clustering mst_clustering
+
+after_success:
+- coveralls
