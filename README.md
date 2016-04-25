@@ -26,7 +26,14 @@ $ conda update conda
 $ conda install numpy scipy scikit-learn
 ```
 
-This package is still unreleased; you can install it from source by running
+You can install the current release of this package from the Python Package Index using ``pip``:
+
+```
+$ conda install pip  # if using conda
+$ pip install mst_clustering
+```
+
+To install from source, you can run
 
 ```
 $ python setup.py install
