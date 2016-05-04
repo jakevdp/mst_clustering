@@ -3,6 +3,8 @@
 [![build status](http://img.shields.io/travis/jakevdp/mst_clustering/master.svg?style=flat)](https://travis-ci.org/jakevdp/mst_clustering)
 [![version status](http://img.shields.io/pypi/v/mst_clustering.svg?style=flat)](https://pypi.python.org/pypi/mst_clustering)
 [![license](http://img.shields.io/badge/license-BSD-blue.svg?style=flat)](https://github.com/jakevdp/mst_clustering/blob/master/LICENSE)
+[![DOI](https://zenodo.org/badge/doi/10.5281/zenodo.50995.svg)](http://dx.doi.org/10.5281/zenodo.50995)
+
 
 This package implements a simple scikit-learn style estimator for clustering
 with a minimum spanning tree.
