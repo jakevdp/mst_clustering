@@ -1,0 +1,23 @@
+{
+  "@context": "https://raw.githubusercontent.com/mbjones/codemeta/master/codemeta.jsonld",
+  "@type": "Code",
+  "author": [
+    {
+      "@id": "0000-0002-9623-3401",
+      "@type": "Person",
+      "email": "jakevdp@uw.edu",
+      "name": "Jake VanderPlas",
+      "affiliation": "University of Washington eScience Institute"
+    }
+  ],
+  "identifier": "https://zenodo.org/record/50995#.Vyp9DBUrJBw",
+  "codeRepository": "http://github.com/jakevdp/mst_clustering",
+  "datePublished": "2016-05-04",
+  "dateModified": "2016-05-04",
+  "dateCreated": "2016-05-04",
+  "description": "Clustering via Euclidean Minimum Spanning Trees",
+  "keywords": "machine learning",
+  "license": "BSD",
+  "title": "mst_clustering",
+  "version": "v1.0"
+}
