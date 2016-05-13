@@ -67,3 +67,10 @@ To install ``mst_clustering`` from source, first download the source repository 
 ```
 $ python setup.py install
 ```
+
+## Contributing & Reporting Issues
+Bug reports, questions, suggestions, and contributions are welcome.
+For these, please make use the
+[Issues](https://github.com/jakevdp/mst_clustering/issues)
+or [Pull Requests](https://github.com/jakevdp/mst_clustering/pulls)
+associated with this repository.
