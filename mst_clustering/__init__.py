@@ -1,3 +1,3 @@
-__version__ = "0.2.dev0"
+__version__ = "1.0"
 
 from ._mst_clustering import MSTClustering
