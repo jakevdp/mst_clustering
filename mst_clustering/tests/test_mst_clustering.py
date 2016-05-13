@@ -8,7 +8,7 @@ from sklearn.datasets import make_blobs
 from sklearn.neighbors import kneighbors_graph
 from sklearn.metrics import pairwise_distances
 
-from .. import MSTClustering
+from mst_clustering import MSTClustering
 
 
 def test_simple_blobs():
@@ -161,6 +161,7 @@ def test_bad_arguments():
     mst.fit(pairwise_distances(X))
     msg = "Cannot use ``get_graph_segments`` with precomputed metric."
     assert_raises_regex(ValueError, msg, mst.get_graph_segments)
+
 
 def test_graph_segments_shape():
     def check_shape(ndim, cutoff, N=10):
