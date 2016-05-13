@@ -1,5 +1,7 @@
 include *.md
 include *.py
 recursive-include mst_clustering *.py
+include MSTClustering.ipynb
 include LICENSE
+include README
 include Makefile
