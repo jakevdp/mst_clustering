@@ -9,34 +9,62 @@
 This package implements a simple scikit-learn style estimator for clustering
 with a minimum spanning tree.
 
+## Motivation
+
+Automated clustering can be an important means of identifying structure in data,
+but many of the more popular clustering algorithms do not perform well in the
+presence of a background. The algorithm implemented here, based on a trimmed
+Euclidean Minimum Spanning Tree, can be useful in this case.
+
 ## Example
 
-For an explanation of the algorithm and an example of it in action, see the [MST Clustering Notebook](http://nbviewer.jupyter.org/github/jakevdp/mst_clustering/blob/master/MSTClustering.ipynb).
+The estimator implemented by this code is designed for compatibility with
+the [scikit-learn](http://scikit-learn.org) project.
+
+```python
+from mst_clustering import MSTClustering
+from sklearn.datasets import make_blobs
+import matplotlib.pyplot as plt
+
+# create some data with four clusters
+X, y = make_blobs(200, centers=4, random_state=42)
+
+# predict the labels with the MST algorithm
+model = MSTClustering(cutoff_scale=2, approximate=False)
+labels = model.fit_predict(X)
+
+# plot the results
+plt.scatter(X[:, 0], X[:, 1], c=labels, cmap='rainbow');
+```
+
+![Simple Clustering Plot](https://raw.githubusercontent.com/username/projectname/master/path/to/images/SimpleClustering.png)
+
+For a detailed explanation of the algorithm and a more interesting example of it in action, see the [MST Clustering Notebook](http://nbviewer.jupyter.org/github/jakevdp/mst_clustering/blob/master/MSTClustering.ipynb).
 
 ## Installation & Requirements
 
-Requirements:
+The ``mst_clustering`` package itself is fairly lightweight. It depends on
+the following packages:
 
 - [numpy](http://numpy.org)
 - [scipy](http://scipy.org)
 - [scikit-learn](http://scikit-learn.org)
 
-I'd recommend installing these requirements with [Anaconda](https://www.continuum.io/downloads) or [miniconda](http://conda.pydata.org/miniconda.html). Once this is installed, you can type
+Using the [conda package manager](http://conda.pydata.org/miniconda.html),
+these requirements can be installed using:
 
 ```
 $ conda update conda
 $ conda install numpy scipy scikit-learn
 ```
 
-You can install the current release of this package from the Python Package Index using ``pip``:
-
+Finally, the current release of ``mst_clustering`` can be installed using ``pip``:
 ```
 $ conda install pip  # if using conda
 $ pip install mst_clustering
 ```
 
-To install from source, you can run
-
+To install ``mst_clustering`` from source, first download the source repository and then run
 ```
 $ python setup.py install
 ```
