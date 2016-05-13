@@ -13,12 +13,12 @@ with a minimum spanning tree.
 
 Automated clustering can be an important means of identifying structure in data,
 but many of the more popular clustering algorithms do not perform well in the
-presence of a background. The algorithm implemented here, based on a trimmed
-Euclidean Minimum Spanning Tree, can be useful in this case.
+presence of background noise. The clustering algorithm implemented here, based
+on a trimmed Euclidean Minimum Spanning Tree, can be useful in this case.
 
 ## Example
 
-The estimator implemented by this code is designed for compatibility with
+The API of the ``mst_clustering`` code is designed for compatibility with
 the [scikit-learn](http://scikit-learn.org) project.
 
 ```python
@@ -30,7 +30,7 @@ import matplotlib.pyplot as plt
 X, y = make_blobs(200, centers=4, random_state=42)
 
 # predict the labels with the MST algorithm
-model = MSTClustering(cutoff_scale=2, approximate=False)
+model = MSTClustering(cutoff_scale=2)
 labels = model.fit_predict(X)
 
 # plot the results
@@ -43,18 +43,17 @@ For a detailed explanation of the algorithm and a more interesting example of it
 
 ## Installation & Requirements
 
-The ``mst_clustering`` package itself is fairly lightweight. It depends on
-the following packages:
+The ``mst_clustering`` package itself is fairly lightweight. It is tested on
+Python 2.7 and 3.4-3.5, and depends on the following packages:
 
 - [numpy](http://numpy.org)
 - [scipy](http://scipy.org)
 - [scikit-learn](http://scikit-learn.org)
 
-Using the [conda package manager](http://conda.pydata.org/miniconda.html),
-these requirements can be installed using:
+Using the cross-platform [conda](http://conda.pydata.org/miniconda.html)
+package manager, these requirements can be installed as follows:
 
 ```
-$ conda update conda
 $ conda install numpy scipy scikit-learn
 ```
 
