@@ -37,7 +37,7 @@ labels = model.fit_predict(X)
 plt.scatter(X[:, 0], X[:, 1], c=labels, cmap='rainbow');
 ```
 
-![Simple Clustering Plot](https://raw.githubusercontent.com/username/projectname/master/path/to/images/SimpleClustering.png)
+![Simple Clustering Plot](https://raw.githubusercontent.com/jakevdp/mst_clustering/master/images/SimpleClustering.png)
 
 For a detailed explanation of the algorithm and a more interesting example of it in action, see the [MST Clustering Notebook](http://nbviewer.jupyter.org/github/jakevdp/mst_clustering/blob/master/MSTClustering.ipynb).
 
