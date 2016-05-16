@@ -4,6 +4,7 @@
 [![version status](http://img.shields.io/pypi/v/mst_clustering.svg?style=flat)](https://pypi.python.org/pypi/mst_clustering)
 [![license](http://img.shields.io/badge/license-BSD-blue.svg?style=flat)](https://github.com/jakevdp/mst_clustering/blob/master/LICENSE)
 [![DOI](https://zenodo.org/badge/doi/10.5281/zenodo.50995.svg)](http://dx.doi.org/10.5281/zenodo.50995)
+[![JOSS](http://joss.theoj.org/papers/10.21105/joss.00012/status.svg)](http://joss.theoj.org/papers/10.21105/joss.00012)
 
 
 This package implements a simple scikit-learn style estimator for clustering
@@ -74,3 +75,7 @@ For these, please make use the
 [Issues](https://github.com/jakevdp/mst_clustering/issues)
 or [Pull Requests](https://github.com/jakevdp/mst_clustering/pulls)
 associated with this repository.
+
+## Citing
+If you use this code in an academic publication, please consider
+citing this [JOSS Paper](http://joss.theoj.org/papers/10.21105/joss.00012).
